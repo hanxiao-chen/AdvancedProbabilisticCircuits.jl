@@ -53,15 +53,40 @@ end
 More efficient evaluation of a sum node using log(sum(exp(x + log(w)))) based on:
 [Sebastian Nowozin: Streaming Log-sum-exp Computation.](http://www.nowozin.net/sebastian/blog/streaming-log-sum-exp-computation.html)
 """
-function _fast_logpdf(n::Node{T,V,S,P,SumNode}, x) where {T,V,S,P} 
+function _fast_logpdf(n::Node{T,V,S,P,SumNode}, x) where {T,V,S,P}
     cs = children(n)
     xmax_r = mapreduce(i -> logpdf(cs[i], x) .+ n.params[i], _logsumexp_onepass_op, 1:length(cs))
     return first(xmax_r) .+ log1p.(last(xmax_r))
 end
-function logpdf(n::Node{T,V,S,P,SumNode}, x) where {T,V,S,P} 
+function logpdf(n::Node{T,V,S,P,SumNode}, x) where {T,V,S,P}
     return logsumexp(n.params[i]+logpdf(c,x) for (i,c) in enumerate(n.children))
 end
 logpdf(n::Node{T,V,S,P,SumNode}, x::AbstractMatrix) where {T,V,S,P} = _fast_logpdf(n,x)
+
+# variational sum node
+VISum(t::Type{<:AbstractNode}, scope, K::Int) = Sum([t(scope) for k in 1:K]...)
+VISum(f::Function, K::Int) = Sum([f(k) for k in 1:K]...)
+
+VISum(ns::AbstractNode...) = Sum(Float32, ns...)
+function VISum(::Type{T}, ns::AbstractNode...; init = (y) -> log.(rand(length(y)))) where {T<:Real}
+    return _build_node(VISumNode, T.(init(ns)), ns...)
+end
+
+"""
+    _fast_logpdf(n, x)
+
+More efficient evaluation of a sum node using log(sum(exp(x + log(w)))) based on:
+[Sebastian Nowozin: Streaming Log-sum-exp Computation.](http://www.nowozin.net/sebastian/blog/streaming-log-sum-exp-computation.html)
+"""
+function _fast_logpdf(n::Node{T,V,S,P,VISumNode}, x) where {T,V,S,P}
+    cs = children(n)
+    logbeta = n.params
+    logweights = digamma.(exp.(logbeta)) .- digamma.(sum(exp.(logbeta)))
+    xmax_r = mapreduce(i -> logpdf(cs[i], x) .+ logweights[i], _logsumexp_onepass_op, 1:length(cs))
+    return first(xmax_r) .+ log1p.(last(xmax_r))
+end
+
+logpdf(n::Node{T,V,S,P,VISumNode}, x::AbstractMatrix) where {T,V,S,P} = _fast_logpdf(n,x)
 
 # --
 # Default leaf nodes

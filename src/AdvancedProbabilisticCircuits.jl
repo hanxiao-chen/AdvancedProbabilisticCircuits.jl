@@ -4,6 +4,7 @@ using MLStyle
 using StatsFuns
 using Crayons
 using Crayons.Box
+using SpecialFunctions
 
 import Base.show
 
