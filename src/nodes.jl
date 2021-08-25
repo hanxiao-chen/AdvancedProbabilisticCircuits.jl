@@ -81,11 +81,10 @@ More efficient evaluation of a sum node using log(sum(exp(x + log(w)))) based on
 function _fast_logpdf(n::Node{T,V,S,P,VISumNode}, x) where {T,V,S,P}
     cs = children(n)
     logbeta = n.params
-    logweights = digamma.(exp.(logbeta)) .- digamma.(sum(exp.(logbeta)))
+    logweights = digamma.(exp.(logbeta)) .- digamma.(exp(logsumexp(logbeta)))
     xmax_r = mapreduce(i -> logpdf(cs[i], x) .+ logweights[i], _logsumexp_onepass_op, 1:length(cs))
     return first(xmax_r) .+ log1p.(last(xmax_r))
 end
-
 logpdf(n::Node{T,V,S,P,VISumNode}, x::AbstractMatrix) where {T,V,S,P} = _fast_logpdf(n,x)
 
 # --

@@ -5,11 +5,12 @@ using StatsFuns
 using Crayons
 using Crayons.Box
 using SpecialFunctions
+using LogExpFunctions
 
 import Base.show
 
-export Prod, Sum, Normal, TruncatedNormal, Indicator
-export Node, SumNode, ProductNode, NodeType
+export Prod, Sum, Normal, VISum, TruncatedNormal, Indicator
+export Node, SumNode, VISumNode, ProductNode, NodeType
 export RealInterval
 export Decomposability, Smoothness, Determinism, Invertability, NodeProperties
 export support, scope, loglikelihood, params, descendants
@@ -19,6 +20,7 @@ export partitionfunction, logpdf, children, leaves
 abstract type NodeType end
 struct ProductNode <: NodeType end
 struct SumNode <: NodeType end
+struct VISumNode <: NodeType end
 
 printnodetype(t::Type{<:NodeType}) = string(t)
 printnodetype(::Type{SumNode}) = "(+)"

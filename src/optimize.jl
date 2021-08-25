@@ -31,9 +31,10 @@ function update!(n::T, grads::NamedTuple; η = 0.01, uparams = []) where {T<:Abs
 end
 
 function update!(n::VISumNode, grads::NamedTuple; η = 0.01, uparams = [])
+    print("VIupdate begin")
     if !isnothing(grads.params)
         α = 1
-        grads_KL = _Dir_KL_grad(n.params,α)
+        grads_KL = _Dir_KL_grads(n.params,α)
         n.params .+= η * (grads.params .- grads_KL)
     end
 
@@ -50,7 +51,14 @@ function update!(n::VISumNode, grads::NamedTuple; η = 0.01, uparams = [])
     end
 end
 
-function _Dir_KL_obj(logβ,α) #KL objetive between Dir dist: bariskurt.com/kullback-leibler-divergence-between-two-dirichlet-and-beta-distributions/
+function _Dir_KL_grads(logβ,α) #KL objetive between Dir dist: bariskurt.com/kullback-leibler-divergence-between-two-dirichlet-and-beta-distributions/
+    grads = Array{Float64, 1}(UndefInitializer(), length(logβ))
+    β0 = exp(logsumexp(logβ))
     β = exp.(logβ)
-    log(gamma(sum(β))) - sum(log.(gamma.(β))) + sum((β.-α).*(digamma.(β).-digamma(sum(β))))
+    for j in 1:length(logβ)
+        tmp1 = sum([(α[i]-β[i])*trigamma(β0)*β[j] for i in 1:length(logβ) if i != j])
+        tmp2 = β[j]*(digamma(β[j])-digamma(β0)) + (β[j]-α[j])*(trigamma(β[j])-trigamma(β0))*β[j]
+        grads[j] = (digamma(β0)-digamma(β[j])) * β[j] + tmp1 + tmp2
+    end
+    return grads
 end
