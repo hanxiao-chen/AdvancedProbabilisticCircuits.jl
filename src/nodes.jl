@@ -64,10 +64,10 @@ end
 logpdf(n::Node{T,V,S,P,SumNode}, x::AbstractMatrix) where {T,V,S,P} = _fast_logpdf(n,x)
 
 # variational sum node
-VISum(t::Type{<:AbstractNode}, scope, K::Int) = Sum([t(scope) for k in 1:K]...)
-VISum(f::Function, K::Int) = Sum([f(k) for k in 1:K]...)
+VISum(t::Type{<:AbstractNode}, scope, K::Int) = VISum([t(scope) for k in 1:K]...)
+VISum(f::Function, K::Int) = VISum([f(k) for k in 1:K]...)
 
-VISum(ns::AbstractNode...) = Sum(Float32, ns...)
+VISum(ns::AbstractNode...) = VISum(Float32, ns...)
 function VISum(::Type{T}, ns::AbstractNode...; init = (y) -> log.(rand(length(y)))) where {T<:Real}
     return _build_node(VISumNode, T.(init(ns)), ns...)
 end
@@ -84,6 +84,12 @@ function _fast_logpdf(n::Node{T,V,S,P,VISumNode}, x) where {T,V,S,P}
     logweights = digamma.(exp.(logbeta)) .- digamma.(exp(logsumexp(logbeta)))
     xmax_r = mapreduce(i -> logpdf(cs[i], x) .+ logweights[i], _logsumexp_onepass_op, 1:length(cs))
     return first(xmax_r) .+ log1p.(last(xmax_r))
+end
+function logpdf(n::Node{T,V,S,P,VISumNode}, x) where {T,V,S,P}
+    cs = children(n)
+    logbeta = n.params
+    logweights = digamma.(exp.(logbeta)) .- digamma.(exp(logsumexp(logbeta)))
+    return logsumexp(logweights[i]+logpdf(c,x) for (i,c) in enumerate(n.children))
 end
 logpdf(n::Node{T,V,S,P,VISumNode}, x::AbstractMatrix) where {T,V,S,P} = _fast_logpdf(n,x)
 

@@ -5,8 +5,12 @@ function update!(n::Node, grads::NamedTuple; η = 0.01, uparams = [])
         n.params .+= η * grads.params
     end
 
+    if grads.children === nothing
+        return
+    end
+
     for (i, child) in enumerate(n.children)
-        if child isa AbstractLeaf
+        if (child isa AbstractLeaf)
             n.children[i] = update!(child, grads.children[i]; η = η, uparams = uparams)
         else
             if grads.children[i] === nothing # why is this happening?
@@ -30,12 +34,20 @@ function update!(n::T, grads::NamedTuple; η = 0.01, uparams = []) where {T<:Abs
     return T(n.scope, (;zip(keys(params(n)), v)...))
 end
 
+function update!(::Indicator, ::NamedTuple; η = 0.01, uparams = [])
+    nothing
+end
+
 function update!(n::VISumNode, grads::NamedTuple; η = 0.01, uparams = [])
     print("VIupdate begin")
     if !isnothing(grads.params)
         α = 1
         grads_KL = _Dir_KL_grads(n.params,α)
         n.params .+= η * (grads.params .- grads_KL)
+    end
+    
+    if grads.children === nothing
+        return
     end
 
     for (i, child) in enumerate(n.children)

@@ -24,6 +24,7 @@ struct VISumNode <: NodeType end
 
 printnodetype(t::Type{<:NodeType}) = string(t)
 printnodetype(::Type{SumNode}) = "(+)"
+printnodetype(::Type{VISumNode}) = "(vi+)"
 printnodetype(::Type{ProductNode}) = "(×)"
 
 abstract type NodeProperties end
